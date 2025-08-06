@@ -1,0 +1,67 @@
+/* Certificate specific styles */
+.certificate-container {
+  font-family: "Georgia", serif;
+  overflow: hidden;
+}
+
+.certificate-container h1 {
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.certificate-container h2 {
+  font-weight: 600;
+}
+
+.certificate-container h3 {
+  font-weight: bold;
+}
+
+/* Ensure text doesn't overflow */
+.certificate-container p,
+.certificate-container span {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Make sure images are contained */
+.certificate-container img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Signature lines */
+.signature-line {
+  border-bottom: 1px solid;
+  display: inline-block;
+  min-width: 120px;
+}
+
+/* Badge styling */
+.certificate-badge {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+/* QR code styling */
+.qr-placeholder {
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+}
+
+/* Responsive text sizing */
+@media print {
+  .certificate-container {
+    width: 1024px !important;
+    height: 768px !important;
+    transform: scale(1) !important;
+  }
+}
