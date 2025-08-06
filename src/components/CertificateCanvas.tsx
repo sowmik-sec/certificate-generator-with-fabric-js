@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Canvas, Rect, Text, Line, Circle, FabricImage } from "fabric";
 import { CertificateData, CertificateTemplate } from "@/types/certificate";
 import { generateVerificationHash } from "@/utils/security";
@@ -25,9 +25,124 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
   const fabricCanvasRef = useRef<Canvas | null>(null);
   const onCanvasReadyRef = useRef(onCanvasReady);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track text elements for efficient updates
+  const textElementsRef = useRef<{
+    studentName?: Text;
+    courseTitle?: Text;
+    instructor?: Text;
+    duration?: Text;
+    grade?: Text;
+    signatureName?: Text;
+    signatureTitle?: Text;
+    institutionName?: Text;
+    dateValue?: Text;
+    certId?: Text;
+    credentialId?: Text;
+    hashText?: Text;
+    footerText?: Text;
+  }>({});
 
   // Update the ref when onCanvasReady changes
   onCanvasReadyRef.current = onCanvasReady;
+
+  // Function to update text elements without full refresh
+  const updateTextElements = useCallback((canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+    const elements = textElementsRef.current;
+    
+    // Update student name
+    if (elements.studentName) {
+      elements.studentName.set('text', data.student.name.toUpperCase());
+      elements.studentName.set('fill', template.titleColor);
+    }
+    
+    // Update course title
+    if (elements.courseTitle) {
+      elements.courseTitle.set('text', data.course.title);
+      elements.courseTitle.set('fill', template.titleColor);
+    }
+    
+    // Update instructor
+    if (elements.instructor && data.course.instructors.length > 0) {
+      elements.instructor.set('text', `Instructed by: ${data.course.instructors.map(inst => inst.name).join(', ')}`);
+      elements.instructor.set('fill', template.textColor);
+    }
+    
+    // Update duration and level
+    if (elements.duration) {
+      elements.duration.set('text', `Duration: ${data.course.duration} | Level: ${data.course.level}`);
+      elements.duration.set('fill', template.textColor);
+    }
+    
+    // Update grade
+    if (elements.grade && data.course.grade && data.course.grade.trim()) {
+      elements.grade.set('text', `Grade: ${data.course.grade}`);
+      elements.grade.set('fill', template.titleColor);
+      elements.grade.set('opacity', 1);
+    } else if (elements.grade) {
+      elements.grade.set('opacity', 0);
+    }
+    
+    // Update signature name
+    if (elements.signatureName) {
+      elements.signatureName.set('text', data.signature.name);
+      elements.signatureName.set('fill', template.titleColor);
+    }
+    
+    // Update signature title
+    if (elements.signatureTitle) {
+      elements.signatureTitle.set('text', data.signature.title);
+      elements.signatureTitle.set('fill', template.textColor);
+    }
+    
+    // Update institution name
+    if (elements.institutionName) {
+      elements.institutionName.set('text', data.institution.name);
+      elements.institutionName.set('fill', template.titleColor);
+      // Show or hide based on whether there's content
+      if (data.institution.name && data.institution.name.trim()) {
+        elements.institutionName.set('opacity', 1);
+      } else {
+        elements.institutionName.set('opacity', 0);
+      }
+    }
+    
+    // Update date
+    if (elements.dateValue) {
+      elements.dateValue.set('text', new Date(data.course.completionDate).toLocaleDateString());
+      elements.dateValue.set('fill', template.titleColor);
+    }
+    
+    // Update certificate ID
+    if (elements.certId) {
+      elements.certId.set('text', `Certificate ID: ${data.id}`);
+      elements.certId.set('fill', template.textColor);
+    }
+    
+    // Update credential ID
+    if (elements.credentialId) {
+      elements.credentialId.set('text', `Credential ID: ${data.course.credentialId}`);
+      elements.credentialId.set('fill', template.textColor);
+    }
+    
+    // Update verification hash
+    if (elements.hashText) {
+      const verificationHash = generateVerificationHash(data);
+      elements.hashText.set('text', `Verification: ${verificationHash}`);
+      elements.hashText.set('fill', template.textColor);
+    }
+    
+    // Update footer
+    if (elements.footerText) {
+      elements.footerText.set('text', `Issued on ${new Date(data.issueDate).toLocaleDateString()} | Verify at: ${data.verificationUrl}`);
+      elements.footerText.set('fill', template.textColor);
+    }
+    
+    // Update canvas background color
+    canvas.backgroundColor = template.backgroundColor;
+    
+    canvas.renderAll();
+  }, []);
 
   const createCertificateDesign = async (
     canvas: Canvas,
@@ -55,25 +170,39 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     await addMainContent(canvas, data, template);
 
     // Add student information
-    await addStudentInfo(canvas, data, template);
+    const studentName = await addStudentInfo(canvas, data, template);
+    textElementsRef.current.studentName = studentName;
 
     // Add course information
-    await addCourseInfo(canvas, data, template);
+    const courseElements = await addCourseInfo(canvas, data, template);
+    textElementsRef.current.courseTitle = courseElements.courseTitle;
+    textElementsRef.current.instructor = courseElements.instructor;
+    textElementsRef.current.duration = courseElements.duration;
+    textElementsRef.current.grade = courseElements.grade;
 
     // Add signature section
-    await addSignature(canvas, data, template);
+    const signatureElements = await addSignature(canvas, data, template);
+    textElementsRef.current.signatureName = signatureElements.signatureName;
+    textElementsRef.current.signatureTitle = signatureElements.signatureTitle;
+    textElementsRef.current.institutionName = signatureElements.institutionName;
+    textElementsRef.current.dateValue = signatureElements.dateValue;
 
     // Add security features
-    await addSecurityFeatures(canvas, data, template);
+    const securityElements = await addSecurityFeatures(canvas, data, template);
+    textElementsRef.current.certId = securityElements.certId;
+    textElementsRef.current.credentialId = securityElements.credentialId;
+    textElementsRef.current.hashText = securityElements.hashText;
 
     // Add footer information
-    await addFooter(canvas, data, template);
+    const footerElements = await addFooter(canvas, data, template);
+    textElementsRef.current.footerText = footerElements.footerText;
 
     canvas.renderAll();
   };
 
+  // Initialize canvas only once
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || fabricCanvasRef.current) return;
 
     // Initialize Fabric.js canvas
     const canvas = new Canvas(canvasRef.current, {
@@ -114,9 +243,18 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     return () => {
       canvas.dispose();
       fabricCanvasRef.current = null;
+      textElementsRef.current = {};
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [certificateData, template, editable, showGrid]); // createCertificateDesign is stable, onCanvasReady handled via ref
+  }, [editable, showGrid]); // Only re-initialize if editable or showGrid changes
+  
+  // Update canvas elements when certificate data changes
+  useEffect(() => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    
+    updateTextElements(canvas, certificateData, template);
+  }, [certificateData, template, updateTextElements]);
 
   const addLogo = async (
     canvas: Canvas,
@@ -357,7 +495,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     canvas: Canvas,
     data: CertificateData,
     template: CertificateTemplate
-  ) => {
+  ): Promise<Text> => {
     const canvasWidth = canvas.width || 1024;
     const studentName = new Text(data.student.name.toUpperCase(), {
       left: canvasWidth / 2,
@@ -381,6 +519,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     );
 
     canvas.add(studentName, nameUnderline);
+    return studentName;
   };
 
   const addCourseInfo = async (
@@ -442,8 +581,8 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       }
     );
 
-    // Add grade if provided
-    let gradeText = null;
+    // Add grade if provided or create hidden grade text
+    let gradeText: Text | null = null;
     if (data.course.grade && data.course.grade.trim()) {
       gradeText = new Text(`Grade: ${data.course.grade}`, {
         left: canvasWidth / 2,
@@ -456,13 +595,30 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
         originX: "center",
         selectable: false,
       });
+    } else {
+      // Create hidden grade text for later updates
+      gradeText = new Text("", {
+        left: canvasWidth / 2,
+        top: 470,
+        fontSize: 16,
+        fontFamily: "Georgia, serif",
+        fill: template.titleColor,
+        fontWeight: "bold",
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+        opacity: 0,
+      });
     }
 
-    if (gradeText) {
-      canvas.add(completionText, courseTitle, instructor, duration, gradeText);
-    } else {
-      canvas.add(completionText, courseTitle, instructor, duration);
-    }
+    canvas.add(completionText, courseTitle, instructor, duration, gradeText);
+    
+    return {
+      courseTitle,
+      instructor,
+      duration,
+      grade: gradeText,
+    };
   };
 
   const addSignature = async (
@@ -548,33 +704,39 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       signatureLine
     );
 
-    // Add institution name in the center bottom area
-    if (data.institution.name) {
-      const institutionLabel = new Text("Issued by:", {
-        left: canvasWidth / 2,
-        top: 500,
-        fontSize: 14,
-        fontFamily: "Arial, sans-serif",
-        fill: template.textColor,
-        textAlign: "center",
-        originX: "center",
-        selectable: false,
-      });
+    // Institution name - always create elements
+    const institutionLabel = new Text("Issued by:", {
+      left: canvasWidth / 2,
+      top: 500,
+      fontSize: 14,
+      fontFamily: "Arial, sans-serif",
+      fill: template.textColor,
+      textAlign: "center",
+      originX: "center",
+      selectable: false,
+    });
 
-      const institutionName = new Text(data.institution.name, {
-        left: canvasWidth / 2,
-        top: 520,
-        fontSize: 18,
-        fontFamily: "Georgia, serif",
-        fill: template.titleColor,
-        fontWeight: "bold",
-        textAlign: "center",
-        originX: "center",
-        selectable: false,
-      });
+    const institutionName = new Text(data.institution.name || "", {
+      left: canvasWidth / 2,
+      top: 520,
+      fontSize: 18,
+      fontFamily: "Georgia, serif",
+      fill: template.titleColor,
+      fontWeight: "bold",
+      textAlign: "center",
+      originX: "center",
+      selectable: false,
+      opacity: (data.institution.name && data.institution.name.trim()) ? 1 : 0,
+    });
 
-      canvas.add(institutionLabel, institutionName);
-    }
+    canvas.add(institutionLabel, institutionName);
+    
+    return {
+      dateValue,
+      signatureName,
+      signatureTitle,
+      institutionName,
+    };
   };
 
   const addSecurityFeatures = async (
@@ -643,6 +805,12 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     });
 
     canvas.add(hashText, certId, credentialId, qrCode, qrLabel);
+    
+    return {
+      hashText,
+      certId,
+      credentialId,
+    };
   };
 
   const addFooter = async (
@@ -670,6 +838,10 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     );
 
     canvas.add(footerText);
+    
+    return {
+      footerText,
+    };
   };
 
   const addGrid = (canvas: Canvas) => {
