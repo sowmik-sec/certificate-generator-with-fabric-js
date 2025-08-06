@@ -1,130 +1,149 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useCallback } from 'react';
-import { CertificateData } from '@/types/certificate';
-import { mockTemplates, mockCourseOptions, generateSecureId, generateVerificationUrl } from '@/data/mockData';
-import { sanitizeInput, validateCertificateIntegrity, checkRateLimit } from '@/utils/security';
-import { 
-  generatePDFFromElement, 
-  generateFileName, 
-  downloadBlob, 
-  previewPDF, 
-  validatePDFRequirements 
-} from '@/utils/pdfGenerator';
-import { CertificatePreview } from './CertificatePreview';
+import React, { useState, useRef, useCallback } from "react";
+import { CertificateData } from "@/types/certificate";
+import {
+  mockTemplates,
+  mockCourseOptions,
+  generateSecureId,
+  generateVerificationUrl,
+} from "@/data/mockData";
+import { sanitizeInput, validateCertificateIntegrity } from "@/utils/security";
+import {
+  generatePDFFromElement,
+  generateFileName,
+  downloadBlob,
+  previewPDF,
+} from "@/utils/pdfGenerator";
+import { CertificatePreview } from "./CertificatePreview";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Download, 
-  Eye, 
-  RefreshCw, 
-  Shield, 
-  AlertCircle, 
-  CheckCircle, 
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  Download,
+  Eye,
+  RefreshCw,
+  Shield,
+  AlertCircle,
+  CheckCircle,
   Palette,
-  FileText
-} from 'lucide-react';
+  FileText,
+} from "lucide-react";
 
 export const CertificateGenerator: React.FC = () => {
-  const [certificateData, setCertificateData] = useState<CertificateData>(() => ({
-    id: generateSecureId(),
-    certificateTitle: 'Certificate of Completion',
-    statement: 'This is to certify that the above named individual has successfully completed all requirements and demonstrated proficiency in',
-    student: {
-      id: 'student-new',
-      name: '',
-      email: '',
-      enrollmentDate: new Date().toISOString().split('T')[0]
-    },
-    course: {
-      id: '',
-      title: '',
-      instructors: [{
-        id: 'instructor-new',
-        name: '',
-        title: ''
-      }],
-      duration: '',
-      completionDate: new Date().toISOString().split('T')[0],
-      category: '',
-      level: 'Beginner',
-      credentialId: generateSecureId(),
-      totalHours: 0
-    },
-    institution: {
-      id: 'inst-new',
-      name: '',
-      website: ''
-    },
-    template: mockTemplates[0],
-    issueDate: new Date().toISOString().split('T')[0],
-    verificationUrl: '',
-    signature: {
-      name: '',
-      title: ''
-    },
-    language: 'en'
-  }));
+  const [certificateData, setCertificateData] = useState<CertificateData>(
+    () => ({
+      id: generateSecureId(),
+      certificateTitle: "Certificate of Completion",
+      statement:
+        "This is to certify that the above named individual has successfully completed all requirements and demonstrated proficiency in",
+      student: {
+        id: "student-new",
+        name: "",
+        email: "",
+        enrollmentDate: new Date().toISOString().split("T")[0],
+      },
+      course: {
+        id: "",
+        title: "",
+        instructors: [
+          {
+            id: "instructor-new",
+            name: "",
+            title: "",
+          },
+        ],
+        duration: "",
+        completionDate: new Date().toISOString().split("T")[0],
+        category: "",
+        level: "Beginner",
+        credentialId: generateSecureId(),
+        totalHours: 0,
+      },
+      institution: {
+        id: "inst-new",
+        name: "",
+        website: "",
+      },
+      template: mockTemplates[0],
+      issueDate: new Date().toISOString().split("T")[0],
+      verificationUrl: "",
+      signature: {
+        name: "",
+        title: "",
+      },
+      language: "en",
+    })
+  );
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('form');
-  
+  const [activeTab, setActiveTab] = useState("form");
+
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Handle form field changes with validation
-  const handleFieldChange = useCallback((field: string, value: string) => {
-    const sanitizedValue = sanitizeInput(value);
-    
-    setCertificateData(prev => {
-      const keys = field.split('.');
-      const newData = { ...prev };
-      
-      if (keys.length === 2) {
-        const [parent, child] = keys;
-        const parentKey = parent as keyof CertificateData;
-        (newData[parentKey] as Record<string, unknown>)[child] = sanitizedValue;
-      } else {
-        const fieldKey = field as keyof CertificateData;
-        (newData as Record<string, unknown>)[fieldKey] = sanitizedValue;
+  const handleFieldChange = useCallback(
+    (field: string, value: string) => {
+      const sanitizedValue = sanitizeInput(value);
+
+      setCertificateData((prev) => {
+        const keys = field.split(".");
+        const newData = { ...prev };
+
+        if (keys.length === 2) {
+          const [parent, child] = keys;
+          const parentKey = parent as keyof CertificateData;
+          (newData[parentKey] as Record<string, unknown>)[child] =
+            sanitizedValue;
+        } else {
+          const fieldKey = field as keyof CertificateData;
+          (newData as Record<string, unknown>)[fieldKey] = sanitizedValue;
+        }
+
+        // Update verification URL when certificate ID changes
+        if (field === "id") {
+          newData.verificationUrl = generateVerificationUrl(sanitizedValue);
+        }
+
+        return newData;
+      });
+
+      // Clear validation errors when user starts typing
+      if (validationErrors.length > 0) {
+        setValidationErrors([]);
       }
-
-      // Update verification URL when certificate ID changes
-      if (field === 'id') {
-        newData.verificationUrl = generateVerificationUrl(sanitizedValue);
-      }
-
-      return newData;
-    });
-
-    // Clear validation errors when user starts typing
-    if (validationErrors.length > 0) {
-      setValidationErrors([]);
-    }
-  }, [validationErrors.length]);
+    },
+    [validationErrors.length]
+  );
 
   // Handle template change
   const handleTemplateChange = useCallback((templateId: string) => {
-    const template = mockTemplates.find(t => t.id === templateId);
+    const template = mockTemplates.find((t) => t.id === templateId);
     if (template) {
-      setCertificateData(prev => ({
+      setCertificateData((prev) => ({
         ...prev,
-        template
+        template,
       }));
     }
   }, []);
 
   // Handle course selection
   const handleCourseChange = useCallback((courseId: string) => {
-    const course = mockCourseOptions.find(c => c.id === courseId);
+    const course = mockCourseOptions.find((c) => c.id === courseId);
     if (course) {
-      setCertificateData(prev => ({
+      setCertificateData((prev) => ({
         ...prev,
         course: {
           ...prev.course,
@@ -134,8 +153,8 @@ export const CertificateGenerator: React.FC = () => {
           category: course.category,
           level: course.level,
           totalHours: course.totalHours || 0,
-          skillsLearned: course.skillsLearned
-        }
+          skillsLearned: course.skillsLearned,
+        },
       }));
     }
   }, []);
@@ -144,15 +163,15 @@ export const CertificateGenerator: React.FC = () => {
   const generateNewId = useCallback(() => {
     const newId = generateSecureId();
     const newCredentialId = generateSecureId();
-    
-    setCertificateData(prev => ({
+
+    setCertificateData((prev) => ({
       ...prev,
       id: newId,
       course: {
         ...prev.course,
-        credentialId: newCredentialId
+        credentialId: newCredentialId,
       },
-      verificationUrl: generateVerificationUrl(newId)
+      verificationUrl: generateVerificationUrl(newId),
     }));
   }, []);
 
@@ -169,45 +188,34 @@ export const CertificateGenerator: React.FC = () => {
       return;
     }
 
-    // Check rate limit
-    const clientId = `${certificateData.student.email || 'anonymous'}-${Date.now()}`;
-    if (!checkRateLimit(clientId)) {
-      setValidationErrors(['Too many requests. Please wait before generating another certificate.']);
-      return;
-    }
-
     setIsGenerating(true);
-    
-    try {
-      const pdfRequirements = validatePDFRequirements();
-      if (!pdfRequirements.isSupported) {
-        throw new Error(`PDF generation not supported: ${pdfRequirements.errors.join(', ')}`);
-      }
 
-      const previewElement = document.getElementById('certificate-preview');
+    try {
+      const previewElement = document.getElementById("certificate-preview");
       if (!previewElement) {
-        throw new Error('Certificate preview element not found');
+        throw new Error("Certificate preview element not found");
       }
 
       const pdfBlob = await generatePDFFromElement(
         previewElement as HTMLElement,
         certificateData,
         {
-          format: 'A4',
-          orientation: 'landscape',
+          format: "A4",
+          orientation: "landscape",
           quality: 1.0,
-          includeWatermark: true,
-          includeMetadata: true
+          includeWatermark: false, // Simplified for now
+          includeMetadata: true,
         }
       );
 
       const filename = generateFileName(certificateData);
       downloadBlob(pdfBlob, filename);
-
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error("Error generating PDF:", error);
       setValidationErrors([
-        error instanceof Error ? error.message : 'Failed to generate PDF'
+        error instanceof Error
+          ? error.message
+          : "Failed to generate PDF. Please try again.",
       ]);
     } finally {
       setIsGenerating(false);
@@ -221,36 +229,44 @@ export const CertificateGenerator: React.FC = () => {
     }
 
     setIsGenerating(true);
-    
+
     try {
-      const previewElement = document.getElementById('certificate-preview');
+      const previewElement = document.getElementById("certificate-preview");
       if (!previewElement) {
-        throw new Error('Certificate preview element not found');
+        throw new Error("Certificate preview element not found");
       }
 
       const pdfBlob = await generatePDFFromElement(
         previewElement as HTMLElement,
         certificateData,
-        { includeWatermark: false } // No watermark for preview
+        {
+          format: "A4",
+          orientation: "landscape",
+          quality: 1.0,
+          includeWatermark: false,
+          includeMetadata: false,
+        }
       );
 
       previewPDF(pdfBlob);
-
     } catch (error) {
-      console.error('Error previewing PDF:', error);
+      console.error("Error previewing PDF:", error);
       setValidationErrors([
-        error instanceof Error ? error.message : 'Failed to preview PDF'
+        error instanceof Error
+          ? error.message
+          : "Failed to preview PDF. Please try again.",
       ]);
     } finally {
       setIsGenerating(false);
     }
   }, [certificateData, validateData]);
 
-  const isFormValid = certificateData.student.name && 
-                     certificateData.course.title && 
-                     certificateData.course.instructors?.[0]?.name && 
-                     certificateData.signature.name &&
-                     certificateData.institution.name;
+  const isFormValid =
+    certificateData.student.name &&
+    certificateData.course.title &&
+    certificateData.course.instructors?.[0]?.name &&
+    certificateData.signature.name &&
+    certificateData.institution.name;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -261,7 +277,8 @@ export const CertificateGenerator: React.FC = () => {
             Certificate Generator
           </h1>
           <p className="text-gray-600">
-            Generate professional certificates for course completions with security features
+            Generate professional certificates for course completions with
+            security features
           </p>
         </div>
 
@@ -269,7 +286,6 @@ export const CertificateGenerator: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Forms and Controls */}
           <div className="lg:col-span-1 space-y-6">
-            
             {/* Validation Alerts */}
             {validationErrors.length > 0 && (
               <Card className="border-red-200 bg-red-50">
@@ -277,7 +293,9 @@ export const CertificateGenerator: React.FC = () => {
                   <div className="flex items-start space-x-2">
                     <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-red-800">Validation Errors:</p>
+                      <p className="text-sm font-medium text-red-800">
+                        Validation Errors:
+                      </p>
                       <ul className="mt-2 text-sm text-red-700 space-y-1">
                         {validationErrors.map((error, index) => (
                           <li key={index}>• {error}</li>
@@ -308,11 +326,15 @@ export const CertificateGenerator: React.FC = () => {
                   {/* Student Information Tab */}
                   <TabsContent value="form" className="space-y-4 mt-4">
                     <div>
-                      <Label htmlFor="certificate-title">Certificate Title *</Label>
+                      <Label htmlFor="certificate-title">
+                        Certificate Title *
+                      </Label>
                       <Input
                         id="certificate-title"
                         value={certificateData.certificateTitle}
-                        onChange={(e) => handleFieldChange('certificateTitle', e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange("certificateTitle", e.target.value)
+                        }
                         placeholder="e.g., Certificate of Completion"
                         className="mt-1"
                       />
@@ -323,30 +345,38 @@ export const CertificateGenerator: React.FC = () => {
                       <Input
                         id="student-name"
                         value={certificateData.student.name}
-                        onChange={(e) => handleFieldChange('student.name', e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange("student.name", e.target.value)
+                        }
                         placeholder="Enter student's full name"
                         className="mt-1"
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="student-email">Student Email *</Label>
                       <Input
                         id="student-email"
                         type="email"
                         value={certificateData.student.email}
-                        onChange={(e) => handleFieldChange('student.email', e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange("student.email", e.target.value)
+                        }
                         placeholder="student@example.com"
                         className="mt-1"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="institution-name">Institution Name *</Label>
+                      <Label htmlFor="institution-name">
+                        Institution Name *
+                      </Label>
                       <Input
                         id="institution-name"
                         value={certificateData.institution.name}
-                        onChange={(e) => handleFieldChange('institution.name', e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange("institution.name", e.target.value)
+                        }
                         placeholder="Enter institution name"
                         className="mt-1"
                       />
@@ -358,7 +388,12 @@ export const CertificateGenerator: React.FC = () => {
                         id="completion-date"
                         type="date"
                         value={certificateData.course.completionDate}
-                        onChange={(e) => handleFieldChange('course.completionDate', e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange(
+                            "course.completionDate",
+                            e.target.value
+                          )
+                        }
                         className="mt-1"
                       />
                     </div>
@@ -367,10 +402,12 @@ export const CertificateGenerator: React.FC = () => {
                   {/* Course Information Tab */}
                   <TabsContent value="course" className="space-y-4 mt-4">
                     <div>
-                      <Label htmlFor="course-select">Select Course</Label>
+                      <Label htmlFor="course-select">
+                        Select Course (Optional)
+                      </Label>
                       <Select onValueChange={handleCourseChange}>
                         <SelectTrigger className="mt-1">
-                          <SelectValue placeholder="Choose a course" />
+                          <SelectValue placeholder="Choose a course template" />
                         </SelectTrigger>
                         <SelectContent>
                           {mockCourseOptions.map((course) => (
@@ -380,6 +417,9 @@ export const CertificateGenerator: React.FC = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Select a template or enter your own course details below
+                      </p>
                     </div>
 
                     <div>
@@ -387,7 +427,9 @@ export const CertificateGenerator: React.FC = () => {
                       <Input
                         id="course-title"
                         value={certificateData.course.title}
-                        onChange={(e) => handleFieldChange('course.title', e.target.value)}
+                        onChange={(e) =>
+                          handleFieldChange("course.title", e.target.value)
+                        }
                         placeholder="Enter course title"
                         className="mt-1"
                       />
@@ -397,11 +439,17 @@ export const CertificateGenerator: React.FC = () => {
                       <Label htmlFor="instructor">Instructor Name *</Label>
                       <Input
                         id="instructor"
-                        value={certificateData.course.instructors[0]?.name || ''}
+                        value={
+                          certificateData.course.instructors[0]?.name || ""
+                        }
                         onChange={(e) => {
                           const newData = { ...certificateData };
                           if (!newData.course.instructors[0]) {
-                            newData.course.instructors[0] = { id: 'instructor-1', name: '' };
+                            newData.course.instructors[0] = {
+                              id: "instructor-1",
+                              name: "",
+                              title: "",
+                            };
                           }
                           newData.course.instructors[0].name = e.target.value;
                           setCertificateData(newData);
@@ -412,81 +460,16 @@ export const CertificateGenerator: React.FC = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="instructor-title">Instructor Title</Label>
-                      <Input
-                        id="instructor-title"
-                        value={certificateData.course.instructors[0]?.title || ''}
-                        onChange={(e) => {
-                          const newData = { ...certificateData };
-                          if (!newData.course.instructors[0]) {
-                            newData.course.instructors[0] = { id: 'instructor-1', name: '' };
-                          }
-                          newData.course.instructors[0].title = e.target.value;
-                          setCertificateData(newData);
-                        }}
-                        placeholder="e.g., Senior Developer"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="total-hours">Total Hours</Label>
-                      <Input
-                        id="total-hours"
-                        type="number"
-                        value={certificateData.course.totalHours || ''}
-                        onChange={(e) => handleFieldChange('course.totalHours', e.target.value)}
-                        placeholder="e.g., 120"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="grade">Grade (Optional)</Label>
-                      <Input
-                        id="grade"
-                        value={certificateData.course.grade || ''}
-                        onChange={(e) => handleFieldChange('course.grade', e.target.value)}
-                        placeholder="e.g., A, 95%, Pass"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="duration">Course Duration</Label>
-                      <Input
-                        id="duration"
-                        value={certificateData.course.duration}
-                        onChange={(e) => handleFieldChange('course.duration', e.target.value)}
-                        placeholder="e.g., 12 weeks, 40 hours"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="level">Course Level</Label>
-                      <Select 
-                        value={certificateData.course.level} 
-                        onValueChange={(value: string) => handleFieldChange('course.level', value)}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Beginner">Beginner</SelectItem>
-                          <SelectItem value="Intermediate">Intermediate</SelectItem>
-                          <SelectItem value="Advanced">Advanced</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="signature-name">Signature Name *</Label>
+                      <Label htmlFor="signature-name">
+                        Authorized Signature *
+                      </Label>
                       <Input
                         id="signature-name"
                         value={certificateData.signature.name}
-                        onChange={(e) => handleFieldChange('signature.name', e.target.value)}
-                        placeholder="Enter signatory name"
+                        onChange={(e) =>
+                          handleFieldChange("signature.name", e.target.value)
+                        }
+                        placeholder="Enter signatory name (e.g., Dean, Director)"
                         className="mt-1"
                       />
                     </div>
@@ -496,8 +479,59 @@ export const CertificateGenerator: React.FC = () => {
                       <Input
                         id="signature-title"
                         value={certificateData.signature.title}
-                        onChange={(e) => handleFieldChange('signature.title', e.target.value)}
-                        placeholder="e.g., Chief Academic Officer"
+                        onChange={(e) =>
+                          handleFieldChange("signature.title", e.target.value)
+                        }
+                        placeholder="e.g., Chief Academic Officer, Director"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="duration">Course Duration</Label>
+                        <Input
+                          id="duration"
+                          value={certificateData.course.duration}
+                          onChange={(e) =>
+                            handleFieldChange("course.duration", e.target.value)
+                          }
+                          placeholder="e.g., 12 weeks"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="level">Course Level</Label>
+                        <Select
+                          value={certificateData.course.level}
+                          onValueChange={(value: string) =>
+                            handleFieldChange("course.level", value)
+                          }
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Beginner">Beginner</SelectItem>
+                            <SelectItem value="Intermediate">
+                              Intermediate
+                            </SelectItem>
+                            <SelectItem value="Advanced">Advanced</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="grade">Grade (Optional)</Label>
+                      <Input
+                        id="grade"
+                        value={certificateData.course.grade || ""}
+                        onChange={(e) =>
+                          handleFieldChange("course.grade", e.target.value)
+                        }
+                        placeholder="e.g., A, 95%, Excellent, Pass"
                         className="mt-1"
                       />
                     </div>
@@ -513,21 +547,27 @@ export const CertificateGenerator: React.FC = () => {
                             key={template.id}
                             className={`p-3 border rounded-lg cursor-pointer transition-colors ${
                               certificateData.template.id === template.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300'
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200 hover:border-gray-300"
                             }`}
                             onClick={() => handleTemplateChange(template.id)}
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-medium">{template.name}</span>
+                              <span className="font-medium">
+                                {template.name}
+                              </span>
                               <div className="flex space-x-1">
-                                <div 
+                                <div
                                   className="w-4 h-4 rounded border"
-                                  style={{ backgroundColor: template.backgroundColor }}
+                                  style={{
+                                    backgroundColor: template.backgroundColor,
+                                  }}
                                 />
-                                <div 
+                                <div
                                   className="w-4 h-4 rounded border"
-                                  style={{ backgroundColor: template.borderColor }}
+                                  style={{
+                                    backgroundColor: template.borderColor,
+                                  }}
                                 />
                               </div>
                             </div>
@@ -577,7 +617,7 @@ export const CertificateGenerator: React.FC = () => {
                     Active
                   </Badge>
                 </div>
-                
+
                 <div className="pt-2 border-t">
                   <Button
                     variant="outline"
@@ -605,7 +645,7 @@ export const CertificateGenerator: React.FC = () => {
                     <Eye className="h-4 w-4 mr-2" />
                     Preview PDF
                   </Button>
-                  
+
                   <Button
                     onClick={handleDownloadPDF}
                     disabled={!isFormValid || isGenerating}
@@ -616,7 +656,7 @@ export const CertificateGenerator: React.FC = () => {
                     ) : (
                       <Download className="h-4 w-4 mr-2" />
                     )}
-                    {isGenerating ? 'Generating...' : 'Download PDF'}
+                    {isGenerating ? "Generating..." : "Download PDF"}
                   </Button>
                 </div>
               </CardContent>
@@ -633,12 +673,12 @@ export const CertificateGenerator: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div 
-                  ref={previewRef} 
-                  className="flex justify-center overflow-hidden rounded-lg bg-gray-100 p-4"
-                  style={{ minHeight: '500px' }}
+                <div
+                  ref={previewRef}
+                  className="flex justify-center overflow-auto rounded-lg bg-gray-100 p-4"
+                  style={{ minHeight: "500px" }}
                 >
-                  <div className="transform scale-75 origin-top">
+                  <div className="transform scale-[0.6] origin-top">
                     <CertificatePreview certificateData={certificateData} />
                   </div>
                 </div>
