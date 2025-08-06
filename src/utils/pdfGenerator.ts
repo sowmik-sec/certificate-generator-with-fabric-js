@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { CertificateData } from "@/types/certificate";
+import { createFallbackCertificatePDF } from "./fallbackPdf";
 
 export interface PDFOptions {
   format: "A4" | "Letter" | "A3";
@@ -27,18 +28,42 @@ export const generatePDFFromElement = async (
   const finalOptions = { ...defaultPDFOptions, ...options };
 
   try {
+    console.log("Starting PDF generation...");
+    console.log("Element:", element);
+    console.log("Certificate data:", certificateData);
+
+    // Temporarily remove problematic CSS classes that might use lab() colors
+    const originalClassList = element.className;
+    element.className = element.className
+      .split(" ")
+      .filter((cls) => !cls.includes("opacity") && !cls.includes("shadow"))
+      .join(" ");
+
     // Create canvas from element with simplified options
     const canvas = await html2canvas(element, {
       scale: finalOptions.quality,
       useCORS: true,
-      allowTaint: false,
+      allowTaint: true, // Allow tainted canvas for images
       backgroundColor: "#ffffff",
-      logging: false,
+      logging: false, // Disable logging to reduce console noise
       width: 1024,
       height: 768,
       windowWidth: 1024,
       windowHeight: 768,
+      ignoreElements: (element) => {
+        // Skip elements with problematic CSS
+        return (
+          element.classList?.contains("transform") ||
+          element.classList?.contains("scale-") ||
+          false
+        );
+      },
     });
+
+    // Restore original classes
+    element.className = originalClassList;
+
+    console.log("Canvas created successfully:", canvas);
 
     // Create PDF with A4 landscape dimensions
     const pdf = new jsPDF({
@@ -54,22 +79,42 @@ export const generatePDFFromElement = async (
 
     // Add certificate image to fit the page
     const imgData = canvas.toDataURL("image/jpeg", 0.95);
+    console.log("Image data created, length:", imgData.length);
+
     pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
 
     // Add simple metadata if enabled
     if (finalOptions.includeMetadata) {
       pdf.setProperties({
-        title: `Certificate - ${certificateData.student.name}`,
-        subject: certificateData.course.title,
-        author: certificateData.institution.name,
+        title: `Certificate - ${certificateData.student.name || "Unknown"}`,
+        subject: certificateData.course.title || "Course Certificate",
+        author: certificateData.institution.name || "Institution",
         creator: "Certificate Generator",
       });
     }
 
-    return pdf.output("blob");
+    const blob = pdf.output("blob");
+    console.log("PDF generated successfully, blob size:", blob.size);
+    return blob;
   } catch (error) {
-    console.error("Error generating PDF:", error);
-    throw new Error("Failed to generate PDF certificate");
+    console.error("Detailed PDF generation error:", error);
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "No stack trace"
+    );
+
+    // Try fallback PDF generation
+    console.log("Attempting fallback PDF generation...");
+    try {
+      return createFallbackCertificatePDF(certificateData);
+    } catch (fallbackError) {
+      console.error("Fallback PDF generation also failed:", fallbackError);
+      throw new Error(
+        `Failed to generate PDF certificate: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
   }
 };
 

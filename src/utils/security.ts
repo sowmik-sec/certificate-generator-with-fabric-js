@@ -68,7 +68,6 @@ export const validateCertificateIntegrity = (
   if (!data.certificateTitle?.trim())
     errors.push("Certificate title is missing");
   if (!data.student?.name?.trim()) errors.push("Student name is missing");
-  if (!data.student?.email?.trim()) errors.push("Student email is missing");
   if (!data.course?.title?.trim()) errors.push("Course title is missing");
   if (!data.course?.credentialId?.trim())
     errors.push("Credential ID is missing");
@@ -83,9 +82,13 @@ export const validateCertificateIntegrity = (
   if (!data.signature?.name?.trim()) errors.push("Signature name is missing");
   if (!data.issueDate) errors.push("Issue date is missing");
 
-  // Validate email format
+  // Validate email format (only if provided)
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (data.student?.email && !emailRegex.test(data.student.email)) {
+  if (
+    data.student?.email &&
+    data.student.email.trim() &&
+    !emailRegex.test(data.student.email)
+  ) {
     errors.push("Invalid email format");
   }
 

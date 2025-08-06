@@ -2,7 +2,6 @@
 
 import React from "react";
 import { CertificateData } from "@/types/certificate";
-import Image from "next/image";
 
 interface CertificatePreviewProps {
   certificateData: CertificateData;
@@ -30,11 +29,12 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
     >
       {/* Background Pattern */}
       <div
-        className="absolute inset-0 opacity-5"
+        className="absolute inset-0"
         style={{
           backgroundImage: `radial-gradient(circle at 20px 20px, ${certificateData.template.borderColor} 2px, transparent 2px)`,
           backgroundSize: "50px 50px",
-          borderRadius: "10px",
+          borderRadius: "8px",
+          opacity: 0.05,
         }}
       />
 
@@ -59,12 +59,11 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
           {/* Institution Logo Area */}
           {certificateData.institution.logoUrl && (
             <div className="mb-3">
-              <Image
+              <img
                 src={certificateData.institution.logoUrl}
                 alt={`${certificateData.institution.name} Logo`}
                 className="h-12 mx-auto"
-                width={64}
-                height={64}
+                style={{ height: "48px", width: "auto", maxWidth: "64px" }}
               />
             </div>
           )}
@@ -192,12 +191,11 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
           {/* Center Badge Area */}
           <div className="text-center">
             {certificateData.credential?.badgeUrl ? (
-              <Image
+              <img
                 src={certificateData.credential.badgeUrl}
                 alt="Credential Badge"
-                width={60}
-                height={60}
                 className="w-15 h-15 mx-auto"
+                style={{ width: "60px", height: "60px", objectFit: "contain" }}
               />
             ) : (
               <div
@@ -240,7 +238,7 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
               </p>
             )}
             <div
-              className="w-24 h-px mt-1"
+              className="w-24 h-px mt-1 ml-auto"
               style={{ backgroundColor: certificateData.template.textColor }}
             />
           </div>
@@ -249,8 +247,11 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
         {/* Footer */}
         <div className="text-center mt-6">
           <p
-            className="text-xs opacity-80"
-            style={{ color: certificateData.template.textColor }}
+            className="text-xs"
+            style={{
+              color: certificateData.template.textColor,
+              opacity: 0.8,
+            }}
           >
             Issued on {new Date(certificateData.issueDate).toLocaleDateString()}
             {certificateData.institution.website && (
@@ -258,28 +259,33 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
             )}
           </p>
 
-          <div className="flex justify-center items-center mt-2 space-x-8">
-            {/* Verification Hash - Smaller and less prominent */}
+          <div className="flex justify-between items-center mt-3">
+            {/* Certificate ID - Left side with full visibility */}
             <div
-              className="text-xs opacity-60"
+              className="text-xs flex-1 text-left"
               style={{
                 color: certificateData.template.textColor,
                 fontFamily: "monospace",
+                opacity: 0.6,
               }}
             >
-              Certificate ID: {certificateData.id.slice(0, 8)}...
+              Certificate ID: {certificateData.id}
             </div>
 
-            {/* Simple QR Placeholder */}
+            {/* QR Placeholder - Right side, smaller */}
             <div
-              className="w-8 h-8 border flex items-center justify-center opacity-40"
+              className="w-6 h-6 border flex items-center justify-center flex-shrink-0"
               style={{
                 borderColor: certificateData.template.textColor,
+                opacity: 0.4,
               }}
             >
               <span
                 className="text-xs"
-                style={{ color: certificateData.template.textColor }}
+                style={{
+                  color: certificateData.template.textColor,
+                  fontSize: "6px",
+                }}
               >
                 QR
               </span>
@@ -290,20 +296,38 @@ export const CertificatePreview: React.FC<CertificatePreviewProps> = ({
 
       {/* Decorative Elements */}
       <div
-        className="absolute top-8 left-8 w-16 h-16 rounded-full opacity-10"
-        style={{ backgroundColor: certificateData.template.borderColor }}
+        className="absolute top-8 left-8 w-16 h-16 rounded-full"
+        style={{
+          backgroundColor: certificateData.template.borderColor,
+          opacity: 0.1,
+        }}
       />
       <div
-        className="absolute bottom-8 right-8 w-12 h-12 rounded-full opacity-10"
-        style={{ backgroundColor: certificateData.template.borderColor }}
+        className="absolute bottom-8 right-8 w-12 h-12 rounded-full"
+        style={{
+          backgroundColor: certificateData.template.borderColor,
+          opacity: 0.1,
+        }}
       />
       <div
-        className="absolute top-1/2 left-4 w-2 h-20 opacity-5"
-        style={{ backgroundColor: certificateData.template.borderColor }}
+        className="absolute w-2 h-20"
+        style={{
+          top: "50%",
+          left: "16px",
+          transform: "translateY(-50%)",
+          backgroundColor: certificateData.template.borderColor,
+          opacity: 0.05,
+        }}
       />
       <div
-        className="absolute top-1/2 right-4 w-2 h-20 opacity-5"
-        style={{ backgroundColor: certificateData.template.borderColor }}
+        className="absolute w-2 h-20"
+        style={{
+          top: "50%",
+          right: "16px",
+          transform: "translateY(-50%)",
+          backgroundColor: certificateData.template.borderColor,
+          opacity: 0.05,
+        }}
       />
     </div>
   );

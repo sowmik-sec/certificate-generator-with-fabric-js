@@ -354,7 +354,9 @@ export const CertificateGenerator: React.FC = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="student-email">Student Email *</Label>
+                      <Label htmlFor="student-email">
+                        Student Email (Optional)
+                      </Label>
                       <Input
                         id="student-email"
                         type="email"
@@ -380,6 +382,27 @@ export const CertificateGenerator: React.FC = () => {
                         placeholder="Enter institution name"
                         className="mt-1"
                       />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="institution-logo">
+                        Institution Logo URL (Optional)
+                      </Label>
+                      <Input
+                        id="institution-logo"
+                        value={certificateData.institution.logoUrl || ""}
+                        onChange={(e) =>
+                          handleFieldChange(
+                            "institution.logoUrl",
+                            e.target.value
+                          )
+                        }
+                        placeholder="https://example.com/logo.png or /default-logo.svg"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-600 mt-1">
+                        Use /default-logo.svg for a simple placeholder logo
+                      </p>
                     </div>
 
                     <div>
