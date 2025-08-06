@@ -3,7 +3,6 @@ import html2canvas from "html2canvas";
 import { CertificateData } from "@/types/certificate";
 import { createFallbackCertificatePDF } from "./fallbackPdf";
 import { createPrintOptimizedCertificate } from "./printOptimizedCertificate";
-import { Canvas } from "fabric";
 
 export interface PDFOptions {
   format: "A4" | "Letter" | "A3";
@@ -19,75 +18,6 @@ export const defaultPDFOptions: PDFOptions = {
   quality: 1.0,
   includeWatermark: true,
   includeMetadata: true,
-};
-
-// Generate PDF from Fabric.js Canvas
-export const generatePDFFromFabricCanvas = async (
-  fabricCanvas: Canvas,
-  certificateData: CertificateData,
-  options: Partial<PDFOptions> = {}
-): Promise<Blob> => {
-  const finalOptions = { ...defaultPDFOptions, ...options };
-
-  try {
-    console.log("Starting PDF generation from Fabric.js canvas...");
-
-    // Convert Fabric.js canvas directly to image data
-    const imageData = fabricCanvas.toDataURL({
-      format: "jpeg",
-      quality: 0.95,
-      multiplier: 2, // Higher resolution
-    });
-
-    console.log("Canvas image data created, length:", imageData.length);
-
-    // Create PDF with A4 landscape dimensions
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-      compress: true,
-    });
-
-    // Calculate dimensions to fit A4 landscape (297x210mm)
-    const pdfWidth = 297;
-    const pdfHeight = 210;
-
-    // Add certificate image to fit the page
-    pdf.addImage(imageData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-
-    // Add simple metadata if enabled
-    if (finalOptions.includeMetadata) {
-      pdf.setProperties({
-        title: `Certificate - ${certificateData.student.name || "Unknown"}`,
-        subject: certificateData.course.title || "Course Certificate",
-        author: certificateData.institution.name || "Institution",
-        creator: "Certificate Generator",
-      });
-    }
-
-    const blob = pdf.output("blob");
-    console.log(
-      "PDF generated successfully from Fabric.js canvas, blob size:",
-      blob.size
-    );
-    return blob;
-  } catch (error) {
-    console.error("Fabric.js PDF generation error:", error);
-
-    // Try fallback PDF generation
-    console.log("Attempting fallback PDF generation...");
-    try {
-      return createFallbackCertificatePDF(certificateData);
-    } catch (fallbackError) {
-      console.error("Fallback PDF generation also failed:", fallbackError);
-      throw new Error(
-        `Failed to generate PDF certificate: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    }
-  }
 };
 
 // Generate PDF from HTML element

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Canvas, Rect, Text, Line, Circle } from 'fabric';
-import { CertificateData, CertificateTemplate } from '@/types/certificate';
-import { generateVerificationHash } from '@/utils/security';
+import React, { useEffect, useRef, useState } from "react";
+import { Canvas, Rect, Text, Line, Circle } from "fabric";
+import { CertificateData, CertificateTemplate } from "@/types/certificate";
+import { generateVerificationHash } from "@/utils/security";
 
 interface CertificateCanvasProps {
   certificateData: CertificateData;
@@ -18,13 +18,17 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
   template,
   onCanvasReady,
   editable = false,
-  showGrid = false
+  showGrid = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fabricCanvasRef = useRef<Canvas | null>(null);
+  const onCanvasReadyRef = useRef(onCanvasReady);
   const [isLoading, setIsLoading] = useState(true);
 
-  const createCertificateDesign = useCallback(async (
+  // Update the ref when onCanvasReady changes
+  onCanvasReadyRef.current = onCanvasReady;
+
+  const createCertificateDesign = async (
     canvas: Canvas,
     data: CertificateData,
     template: CertificateTemplate
@@ -62,7 +66,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     await addFooter(canvas, data, template);
 
     canvas.renderAll();
-  }, []);
+  };
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -96,14 +100,19 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     }
 
     setIsLoading(false);
-    onCanvasReady?.(canvas);
+
+    // Call onCanvasReady if provided - using ref to avoid dependency
+    if (onCanvasReadyRef.current) {
+      onCanvasReadyRef.current(canvas);
+    }
 
     // Cleanup
     return () => {
       canvas.dispose();
       fabricCanvasRef.current = null;
     };
-  }, [certificateData, template, editable, showGrid, onCanvasReady, createCertificateDesign]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [certificateData, template, editable, showGrid]); // createCertificateDesign is stable, onCanvasReady handled via ref
 
   const addBorder = async (canvas: Canvas, template: CertificateTemplate) => {
     // Outer border
@@ -112,7 +121,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       top: 20,
       width: (canvas.width || 1024) - 40,
       height: (canvas.height || 768) - 40,
-      fill: 'transparent',
+      fill: "transparent",
       stroke: template.borderColor,
       strokeWidth: 4,
       rx: 10,
@@ -126,7 +135,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       top: 40,
       width: (canvas.width || 1024) - 80,
       height: (canvas.height || 768) - 80,
-      fill: 'transparent',
+      fill: "transparent",
       stroke: template.borderColor,
       strokeWidth: 1,
       strokeDashArray: [5, 5],
@@ -138,7 +147,10 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     canvas.add(outerBorder, innerBorder);
   };
 
-  const addBackgroundPattern = async (canvas: Canvas, template: CertificateTemplate) => {
+  const addBackgroundPattern = async (
+    canvas: Canvas,
+    template: CertificateTemplate
+  ) => {
     if (!template.backgroundPattern) return;
 
     const patternSize = 50;
@@ -163,15 +175,15 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
   const addTitle = async (canvas: Canvas, template: CertificateTemplate) => {
     const canvasWidth = canvas.width || 1024;
-    const title = new Text('CERTIFICATE OF COMPLETION', {
+    const title = new Text("CERTIFICATE OF COMPLETION", {
       left: canvasWidth / 2,
       top: 120,
       fontSize: 42,
-      fontFamily: 'Georgia, serif',
+      fontFamily: "Georgia, serif",
       fill: template.titleColor,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      originX: 'center',
+      fontWeight: "bold",
+      textAlign: "center",
+      originX: "center",
       selectable: false,
     });
 
@@ -181,40 +193,48 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       width: 300,
       height: 3,
       fill: template.titleColor,
-      originX: 'center',
+      originX: "center",
       selectable: false,
     });
 
     canvas.add(title, titleUnderline);
   };
 
-  const addMainContent = async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+  const addMainContent = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
     const canvasWidth = canvas.width || 1024;
-    const mainText = new Text('This is to certify that', {
+    const mainText = new Text("This is to certify that", {
       left: canvasWidth / 2,
       top: 220,
       fontSize: 20,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.textColor,
-      textAlign: 'center',
-      originX: 'center',
+      textAlign: "center",
+      originX: "center",
       selectable: false,
     });
 
     canvas.add(mainText);
   };
 
-  const addStudentInfo = async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+  const addStudentInfo = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
     const canvasWidth = canvas.width || 1024;
     const studentName = new Text(data.student.name.toUpperCase(), {
       left: canvasWidth / 2,
       top: 270,
       fontSize: 36,
-      fontFamily: 'Georgia, serif',
+      fontFamily: "Georgia, serif",
       fill: template.titleColor,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      originX: 'center',
+      fontWeight: "bold",
+      textAlign: "center",
+      originX: "center",
       selectable: false,
     });
 
@@ -230,16 +250,20 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     canvas.add(studentName, nameUnderline);
   };
 
-  const addCourseInfo = async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+  const addCourseInfo = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
     const canvasWidth = canvas.width || 1024;
-    const completionText = new Text('has successfully completed the course', {
+    const completionText = new Text("has successfully completed the course", {
       left: canvasWidth / 2,
       top: 350,
       fontSize: 18,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.textColor,
-      textAlign: 'center',
-      originX: 'center',
+      textAlign: "center",
+      originX: "center",
       selectable: false,
     });
 
@@ -247,60 +271,75 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       left: canvasWidth / 2,
       top: 385,
       fontSize: 24,
-      fontFamily: 'Georgia, serif',
+      fontFamily: "Georgia, serif",
       fill: template.titleColor,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      originX: 'center',
+      fontWeight: "bold",
+      textAlign: "center",
+      originX: "center",
       selectable: false,
     });
 
-    const instructor = new Text(`Instructed by: ${data.course.instructors.map(inst => inst.name).join(', ')}`, {
-      left: canvasWidth / 2,
-      top: 425,
-      fontSize: 16,
-      fontFamily: 'Arial, sans-serif',
-      fill: template.textColor,
-      textAlign: 'center',
-      originX: 'center',
-      selectable: false,
-    });
+    const instructor = new Text(
+      `Instructed by: ${data.course.instructors
+        .map((inst) => inst.name)
+        .join(", ")}`,
+      {
+        left: canvasWidth / 2,
+        top: 425,
+        fontSize: 16,
+        fontFamily: "Arial, sans-serif",
+        fill: template.textColor,
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+      }
+    );
 
-    const duration = new Text(`Duration: ${data.course.duration} | Level: ${data.course.level}`, {
-      left: canvasWidth / 2,
-      top: 450,
-      fontSize: 14,
-      fontFamily: 'Arial, sans-serif',
-      fill: template.textColor,
-      textAlign: 'center',
-      originX: 'center',
-      selectable: false,
-    });
+    const duration = new Text(
+      `Duration: ${data.course.duration} | Level: ${data.course.level}`,
+      {
+        left: canvasWidth / 2,
+        top: 450,
+        fontSize: 14,
+        fontFamily: "Arial, sans-serif",
+        fill: template.textColor,
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+      }
+    );
 
     canvas.add(completionText, courseTitle, instructor, duration);
   };
 
-  const addSignature = async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+  const addSignature = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
     const canvasWidth = canvas.width || 1024;
     // Date section
-    const dateLabel = new Text('Date of Completion:', {
+    const dateLabel = new Text("Date of Completion:", {
       left: 150,
       top: 550,
       fontSize: 14,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.textColor,
       selectable: false,
     });
 
-    const dateValue = new Text(new Date(data.course.completionDate).toLocaleDateString(), {
-      left: 150,
-      top: 575,
-      fontSize: 16,
-      fontFamily: 'Arial, sans-serif',
-      fill: template.titleColor,
-      fontWeight: 'bold',
-      selectable: false,
-    });
+    const dateValue = new Text(
+      new Date(data.course.completionDate).toLocaleDateString(),
+      {
+        left: 150,
+        top: 575,
+        fontSize: 16,
+        fontFamily: "Arial, sans-serif",
+        fill: template.titleColor,
+        fontWeight: "bold",
+        selectable: false,
+      }
+    );
 
     const dateLine = new Line([150, 595, 300, 595], {
       stroke: template.textColor,
@@ -309,11 +348,11 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     });
 
     // Signature section
-    const signatureLabel = new Text('Authorized Signature:', {
+    const signatureLabel = new Text("Authorized Signature:", {
       left: canvasWidth - 300,
       top: 550,
       fontSize: 14,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.textColor,
       selectable: false,
     });
@@ -322,9 +361,9 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       left: canvasWidth - 300,
       top: 575,
       fontSize: 16,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.titleColor,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       selectable: false,
     });
 
@@ -332,21 +371,36 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       left: canvasWidth - 300,
       top: 600,
       fontSize: 12,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.textColor,
       selectable: false,
     });
 
-    const signatureLine = new Line([canvasWidth - 300, 595, canvasWidth - 150, 595], {
-      stroke: template.textColor,
-      strokeWidth: 1,
-      selectable: false,
-    });
+    const signatureLine = new Line(
+      [canvasWidth - 300, 595, canvasWidth - 150, 595],
+      {
+        stroke: template.textColor,
+        strokeWidth: 1,
+        selectable: false,
+      }
+    );
 
-    canvas.add(dateLabel, dateValue, dateLine, signatureLabel, signatureName, signatureTitle, signatureLine);
+    canvas.add(
+      dateLabel,
+      dateValue,
+      dateLine,
+      signatureLabel,
+      signatureName,
+      signatureTitle,
+      signatureLine
+    );
   };
 
-  const addSecurityFeatures = async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+  const addSecurityFeatures = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
     const canvasWidth = canvas.width || 1024;
     // Verification hash
     const verificationHash = generateVerificationHash(data);
@@ -354,7 +408,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       left: 60,
       top: 650,
       fontSize: 10,
-      fontFamily: 'Courier New, monospace',
+      fontFamily: "Courier New, monospace",
       fill: template.textColor,
       opacity: 0.7,
       selectable: false,
@@ -365,22 +419,25 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       left: 60,
       top: 670,
       fontSize: 10,
-      fontFamily: 'Courier New, monospace',
+      fontFamily: "Courier New, monospace",
       fill: template.textColor,
       opacity: 0.7,
       selectable: false,
     });
 
     // Credential ID
-    const credentialId = new Text(`Credential ID: ${data.course.credentialId}`, {
-      left: 60,
-      top: 690,
-      fontSize: 10,
-      fontFamily: 'Courier New, monospace',
-      fill: template.textColor,
-      opacity: 0.7,
-      selectable: false,
-    });
+    const credentialId = new Text(
+      `Credential ID: ${data.course.credentialId}`,
+      {
+        left: 60,
+        top: 690,
+        fontSize: 10,
+        fontFamily: "Courier New, monospace",
+        fill: template.textColor,
+        opacity: 0.7,
+        selectable: false,
+      }
+    );
 
     // QR Code placeholder (simplified representation)
     const qrCode = new Rect({
@@ -393,34 +450,40 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       selectable: false,
     });
 
-    const qrLabel = new Text('QR Code', {
+    const qrLabel = new Text("QR Code", {
       left: canvasWidth - 105,
       top: 675,
       fontSize: 8,
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: "Arial, sans-serif",
       fill: template.textColor,
-      textAlign: 'center',
-      originX: 'center',
+      textAlign: "center",
+      originX: "center",
       selectable: false,
     });
 
     canvas.add(hashText, certId, credentialId, qrCode, qrLabel);
   };
 
-  const addFooter = async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+  const addFooter = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
     const canvasWidth = canvas.width || 1024;
     const canvasHeight = canvas.height || 768;
     const footerText = new Text(
-      `Issued on ${new Date(data.issueDate).toLocaleDateString()} | Verify at: ${data.verificationUrl}`,
+      `Issued on ${new Date(
+        data.issueDate
+      ).toLocaleDateString()} | Verify at: ${data.verificationUrl}`,
       {
         left: canvasWidth / 2,
         top: canvasHeight - 40,
         fontSize: 10,
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: "Arial, sans-serif",
         fill: template.textColor,
         opacity: 0.8,
-        textAlign: 'center',
-        originX: 'center',
+        textAlign: "center",
+        originX: "center",
         selectable: false,
       }
     );
@@ -430,7 +493,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
   const addGrid = (canvas: Canvas) => {
     const gridSize = 20;
-    const gridColor = '#ddd';
+    const gridColor = "#ddd";
     const canvasWidth = canvas.width || 1024;
     const canvasHeight = canvas.height || 768;
 
@@ -469,8 +532,10 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       )}
       <canvas
         ref={canvasRef}
-        className={`border rounded-lg shadow-sm ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity`}
-        style={{ maxWidth: '100%', height: 'auto' }}
+        className={`border rounded-lg shadow-sm ${
+          isLoading ? "opacity-0" : "opacity-100"
+        } transition-opacity`}
+        style={{ maxWidth: "100%", height: "auto" }}
       />
     </div>
   );

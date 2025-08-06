@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
+import { Canvas } from "fabric";
 import { CertificateData } from "@/types/certificate";
 import {
   mockTemplates,
@@ -10,12 +11,12 @@ import {
 } from "@/data/mockData";
 import { sanitizeInput, validateCertificateIntegrity } from "@/utils/security";
 import {
-  generatePDFFromElement,
+  generatePDFFromFabricCanvas,
   generateFileName,
   downloadBlob,
   previewPDF,
 } from "@/utils/pdfGenerator";
-import { CertificatePreview } from "./CertificatePreview";
+import { CertificateCanvas } from "./CertificateCanvas";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,6 +91,7 @@ export const CertificateGenerator: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("form");
+  const [fabricCanvas, setFabricCanvas] = useState<Canvas | null>(null);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -191,13 +193,14 @@ export const CertificateGenerator: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      const previewElement = document.getElementById("certificate-preview");
-      if (!previewElement) {
-        throw new Error("Certificate preview element not found");
+      if (!fabricCanvas) {
+        throw new Error(
+          "Certificate canvas not ready. Please wait for the certificate to load."
+        );
       }
 
-      const pdfBlob = await generatePDFFromElement(
-        previewElement as HTMLElement,
+      const pdfBlob = await generatePDFFromFabricCanvas(
+        fabricCanvas,
         certificateData,
         {
           format: "A4",
@@ -220,7 +223,7 @@ export const CertificateGenerator: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [certificateData, validateData]);
+  }, [certificateData, validateData, fabricCanvas]);
 
   // Preview PDF in new tab
   const handlePreviewPDF = useCallback(async () => {
@@ -231,13 +234,14 @@ export const CertificateGenerator: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      const previewElement = document.getElementById("certificate-preview");
-      if (!previewElement) {
-        throw new Error("Certificate preview element not found");
+      if (!fabricCanvas) {
+        throw new Error(
+          "Certificate canvas not ready. Please wait for the certificate to load."
+        );
       }
 
-      const pdfBlob = await generatePDFFromElement(
-        previewElement as HTMLElement,
+      const pdfBlob = await generatePDFFromFabricCanvas(
+        fabricCanvas,
         certificateData,
         {
           format: "A4",
@@ -259,7 +263,7 @@ export const CertificateGenerator: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [certificateData, validateData]);
+  }, [certificateData, validateData, fabricCanvas]);
 
   const isFormValid =
     certificateData.student.name &&
@@ -702,7 +706,13 @@ export const CertificateGenerator: React.FC = () => {
                   style={{ minHeight: "500px" }}
                 >
                   <div className="transform scale-[0.6] origin-top">
-                    <CertificatePreview certificateData={certificateData} />
+                    <CertificateCanvas
+                      certificateData={certificateData}
+                      template={certificateData.template}
+                      onCanvasReady={(canvas) => setFabricCanvas(canvas)}
+                      editable={false}
+                      showGrid={false}
+                    />
                   </div>
                 </div>
               </CardContent>
