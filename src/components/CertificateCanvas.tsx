@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Canvas, Rect, Text, Line, Circle } from "fabric";
+import { Canvas, Rect, Text, Line, Circle, FabricImage } from "fabric";
 import { CertificateData, CertificateTemplate } from "@/types/certificate";
 import { generateVerificationHash } from "@/utils/security";
+import { loadOptimizedImage } from "@/utils/imageLoader";
 
 interface CertificateCanvasProps {
   certificateData: CertificateData;
@@ -40,6 +41,9 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
     // Add decorative border
     await addBorder(canvas, template);
+
+    // Add logo
+    await addLogo(canvas, data, template);
 
     // Add background pattern
     await addBackgroundPattern(canvas, template);
@@ -114,6 +118,135 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [certificateData, template, editable, showGrid]); // createCertificateDesign is stable, onCanvasReady handled via ref
 
+  const addLogo = async (
+    canvas: Canvas,
+    data: CertificateData,
+    template: CertificateTemplate
+  ) => {
+    try {
+      // Determine logo URL with priority: user > template > default
+      let logoUrl = "";
+
+      if (data.institution.logoUrl && data.institution.logoUrl.trim()) {
+        logoUrl = data.institution.logoUrl.trim();
+        console.log("Using user logo URL:", logoUrl);
+      } else if (template.logoUrl && template.logoUrl.trim()) {
+        logoUrl = template.logoUrl.trim();
+        console.log("Using template logo URL:", logoUrl);
+      } else {
+        logoUrl = "/default-logo.svg";
+        console.log("Using default logo URL:", logoUrl);
+      }
+
+      console.log("Final logo URL selected:", logoUrl);
+
+      // For external URLs, try loading directly without optimization first
+      if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
+        console.log("Loading external logo directly...");
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+
+        const loadPromise = new Promise<HTMLImageElement>((resolve, reject) => {
+          img.onload = () => {
+            console.log("External logo loaded successfully:", logoUrl);
+            resolve(img);
+          };
+          img.onerror = (error) => {
+            console.warn("Failed to load external logo:", logoUrl, error);
+            reject(error);
+          };
+        });
+
+        img.src = logoUrl;
+
+        try {
+          const loadedImg = await loadPromise;
+          const logoImg = new FabricImage(loadedImg);
+
+          const canvasWidth = canvas.width || 1024;
+          const maxLogoWidth = 120;
+          const maxLogoHeight = 80;
+
+          // Calculate scaling to maintain aspect ratio
+          const scaleX = maxLogoWidth / logoImg.width!;
+          const scaleY = maxLogoHeight / logoImg.height!;
+          const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
+
+          logoImg.set({
+            left: canvasWidth / 2, // Center horizontally
+            top: 50,
+            scaleX: scale,
+            scaleY: scale,
+            originX: "center", // Center the logo
+            selectable: false,
+            evented: false,
+            opacity: 0.9,
+          });
+
+          canvas.add(logoImg);
+          console.log("External logo added successfully to canvas");
+          return;
+        } catch {
+          console.warn("External logo failed, trying with optimization...");
+        }
+      }
+
+      // Fallback to optimized loading (for local files or if external failed)
+      const optimizedImg = await loadOptimizedImage(logoUrl, {
+        maxWidth: 150,
+        maxHeight: 100,
+        quality: 0.9,
+        fallbackUrl: "/default-logo.svg",
+      });
+
+      if (optimizedImg) {
+        // Create Fabric.js image from the optimized HTML image
+        const logoImg = new FabricImage(optimizedImg);
+
+        const canvasWidth = canvas.width || 1024;
+        const maxLogoWidth = 120;
+        const maxLogoHeight = 80;
+
+        // Calculate scaling to maintain aspect ratio
+        const scaleX = maxLogoWidth / logoImg.width!;
+        const scaleY = maxLogoHeight / logoImg.height!;
+        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
+
+        logoImg.set({
+          left: canvasWidth / 2, // Center horizontally
+          top: 50,
+          scaleX: scale,
+          scaleY: scale,
+          originX: "center", // Center the logo
+          selectable: false,
+          evented: false,
+          opacity: 0.9,
+        });
+
+        canvas.add(logoImg);
+        console.log("Optimized logo added successfully with URL:", logoUrl);
+      } else {
+        throw new Error("Failed to load logo image");
+      }
+    } catch (error) {
+      console.warn("Failed to load logo:", error);
+      // Add text placeholder if logo fails to load
+      const logoPlaceholder = new Text("LOGO", {
+        left: (canvas.width || 1024) / 2,
+        top: 70,
+        fontSize: 16,
+        fontFamily: "Arial, sans-serif",
+        fill: template.textColor,
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+        opacity: 0.5,
+      });
+      canvas.add(logoPlaceholder);
+    }
+  };
+
   const addBorder = async (canvas: Canvas, template: CertificateTemplate) => {
     // Outer border
     const outerBorder = new Rect({
@@ -177,7 +310,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     const canvasWidth = canvas.width || 1024;
     const title = new Text("CERTIFICATE OF COMPLETION", {
       left: canvasWidth / 2,
-      top: 120,
+      top: 140, // Moved down to make room for centered logo
       fontSize: 42,
       fontFamily: "Georgia, serif",
       fill: template.titleColor,
@@ -189,7 +322,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
     const titleUnderline = new Rect({
       left: canvasWidth / 2,
-      top: 175,
+      top: 195, // Adjusted accordingly
       width: 300,
       height: 3,
       fill: template.titleColor,
@@ -309,7 +442,27 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       }
     );
 
-    canvas.add(completionText, courseTitle, instructor, duration);
+    // Add grade if provided
+    let gradeText = null;
+    if (data.course.grade && data.course.grade.trim()) {
+      gradeText = new Text(`Grade: ${data.course.grade}`, {
+        left: canvasWidth / 2,
+        top: 470,
+        fontSize: 16,
+        fontFamily: "Georgia, serif",
+        fill: template.titleColor,
+        fontWeight: "bold",
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+      });
+    }
+
+    if (gradeText) {
+      canvas.add(completionText, courseTitle, instructor, duration, gradeText);
+    } else {
+      canvas.add(completionText, courseTitle, instructor, duration);
+    }
   };
 
   const addSignature = async (
@@ -394,6 +547,34 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       signatureTitle,
       signatureLine
     );
+
+    // Add institution name in the center bottom area
+    if (data.institution.name) {
+      const institutionLabel = new Text("Issued by:", {
+        left: canvasWidth / 2,
+        top: 500,
+        fontSize: 14,
+        fontFamily: "Arial, sans-serif",
+        fill: template.textColor,
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+      });
+
+      const institutionName = new Text(data.institution.name, {
+        left: canvasWidth / 2,
+        top: 520,
+        fontSize: 18,
+        fontFamily: "Georgia, serif",
+        fill: template.titleColor,
+        fontWeight: "bold",
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+      });
+
+      canvas.add(institutionLabel, institutionName);
+    }
   };
 
   const addSecurityFeatures = async (
