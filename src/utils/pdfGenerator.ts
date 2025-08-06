@@ -182,6 +182,42 @@ export const generatePDFFromElement = async (
   }
 };
 
+// Generate PNG from Fabric.js Canvas
+export const generatePNGFromFabricCanvas = async (
+  fabricCanvas: Canvas,
+  certificateData: CertificateData,
+  options: { quality?: number; multiplier?: number } = {}
+): Promise<Blob> => {
+  const { quality = 0.95, multiplier = 2 } = options;
+
+  try {
+    console.log("Starting PNG generation from Fabric.js canvas...");
+
+    // Convert Fabric.js canvas directly to image data
+    const imageData = fabricCanvas.toDataURL({
+      format: "png",
+      quality: quality,
+      multiplier: multiplier, // Higher resolution
+    });
+
+    console.log("Canvas PNG image data created, length:", imageData.length);
+
+    // Convert data URL to blob
+    const response = await fetch(imageData);
+    const blob = await response.blob();
+
+    console.log("PNG generated successfully from Fabric.js canvas, blob size:", blob.size);
+    return blob;
+  } catch (error) {
+    console.error("PNG generation error:", error);
+    throw new Error(
+      `Failed to generate PNG certificate: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+};
+
 // Generate filename for PDF
 export const generateFileName = (certificateData: CertificateData): string => {
   const sanitizedName = certificateData.student.name
@@ -197,6 +233,23 @@ export const generateFileName = (certificateData: CertificateData): string => {
   const date = new Date(certificateData.issueDate).toISOString().split("T")[0];
 
   return `Certificate_${sanitizedName}_${sanitizedCourse}_${date}.pdf`;
+};
+
+// Generate filename for PNG
+export const generatePNGFileName = (certificateData: CertificateData): string => {
+  const sanitizedName = certificateData.student.name
+    .replace(/[^a-zA-Z0-9]/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_|_$/g, "");
+
+  const sanitizedCourse = certificateData.course.title
+    .replace(/[^a-zA-Z0-9]/g, "_")
+    .replace(/_{2,}/g, "_")
+    .replace(/^_|_$/g, "");
+
+  const date = new Date(certificateData.issueDate).toISOString().split("T")[0];
+
+  return `Certificate_${sanitizedName}_${sanitizedCourse}_${date}.png`;
 };
 
 // Download blob as file

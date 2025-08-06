@@ -12,7 +12,9 @@ import {
 import { sanitizeInput, validateCertificateIntegrity } from "@/utils/security";
 import {
   generatePDFFromFabricCanvas,
+  generatePNGFromFabricCanvas,
   generateFileName,
+  generatePNGFileName,
   downloadBlob,
   previewPDF,
 } from "@/utils/pdfGenerator";
@@ -40,6 +42,7 @@ import {
   CheckCircle,
   Palette,
   FileText,
+  Image,
 } from "lucide-react";
 
 export const CertificateGenerator: React.FC = () => {
@@ -219,6 +222,44 @@ export const CertificateGenerator: React.FC = () => {
         error instanceof Error
           ? error.message
           : "Failed to generate PDF. Please try again.",
+      ]);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [certificateData, validateData, fabricCanvas]);
+
+  // Generate and download PNG
+  const handleDownloadPNG = useCallback(async () => {
+    if (!validateData()) {
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      if (!fabricCanvas) {
+        throw new Error(
+          "Certificate canvas not ready. Please wait for the certificate to load."
+        );
+      }
+
+      const pngBlob = await generatePNGFromFabricCanvas(
+        fabricCanvas,
+        certificateData,
+        {
+          quality: 0.95,
+          multiplier: 2, // High resolution
+        }
+      );
+
+      const filename = generatePNGFileName(certificateData);
+      downloadBlob(pngBlob, filename);
+    } catch (error) {
+      console.error("Error generating PNG:", error);
+      setValidationErrors([
+        error instanceof Error
+          ? error.message
+          : "Failed to generate PNG. Please try again.",
       ]);
     } finally {
       setIsGenerating(false);
@@ -673,18 +714,34 @@ export const CertificateGenerator: React.FC = () => {
                     Preview PDF
                   </Button>
 
-                  <Button
-                    onClick={handleDownloadPDF}
-                    disabled={!isFormValid || isGenerating}
-                    className="w-full"
-                  >
-                    {isGenerating ? (
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4 mr-2" />
-                    )}
-                    {isGenerating ? "Generating..." : "Download PDF"}
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={handleDownloadPDF}
+                      disabled={!isFormValid || isGenerating}
+                      className="w-full"
+                    >
+                      {isGenerating ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      {isGenerating ? "Generating..." : "PDF"}
+                    </Button>
+
+                    <Button
+                      onClick={handleDownloadPNG}
+                      disabled={!isFormValid || isGenerating}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      {isGenerating ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Image className="h-4 w-4 mr-2" />
+                      )}
+                      {isGenerating ? "Generating..." : "PNG"}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
