@@ -26,7 +26,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
   const onCanvasReadyRef = useRef(onCanvasReady);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Track text elements for efficient updates
+  // Track text elements and logo for efficient updates
   const textElementsRef = useRef<{
     studentName?: Text;
     courseTitle?: Text;
@@ -42,9 +42,141 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     hashText?: Text;
     footerText?: Text;
   }>({});
+  
+  const logoElementRef = useRef<FabricImage | Text | null>(null);
+  const currentLogoUrlRef = useRef<string>("");
 
   // Update the ref when onCanvasReady changes
   onCanvasReadyRef.current = onCanvasReady;
+
+  // Function to update logo when URL changes
+  const updateLogo = useCallback(async (canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
+    // Determine current logo URL
+    let logoUrl = "";
+    if (data.institution.logoUrl && data.institution.logoUrl.trim()) {
+      logoUrl = data.institution.logoUrl.trim();
+    } else if (template.logoUrl && template.logoUrl.trim()) {
+      logoUrl = template.logoUrl.trim();
+    } else {
+      logoUrl = "/default-logo.svg";
+    }
+
+    // Only update if URL has changed
+    if (logoUrl === currentLogoUrlRef.current) {
+      return;
+    }
+
+    console.log("Logo URL changed from", currentLogoUrlRef.current, "to", logoUrl);
+    currentLogoUrlRef.current = logoUrl;
+
+    // Remove existing logo
+    if (logoElementRef.current) {
+      canvas.remove(logoElementRef.current);
+      logoElementRef.current = null;
+    }
+
+    // Add new logo
+    try {
+      let logoElement: FabricImage | Text;
+
+      if (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
+        // External URL - try loading directly
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+
+        const loadPromise = new Promise<HTMLImageElement>((resolve, reject) => {
+          img.onload = () => resolve(img);
+          img.onerror = (error) => reject(error);
+        });
+
+        img.src = logoUrl;
+
+        try {
+          const loadedImg = await loadPromise;
+          const logoImg = new FabricImage(loadedImg);
+
+          const canvasWidth = canvas.width || 1024;
+          const maxLogoWidth = 120;
+          const maxLogoHeight = 80;
+
+          const scaleX = maxLogoWidth / logoImg.width!;
+          const scaleY = maxLogoHeight / logoImg.height!;
+          const scale = Math.min(scaleX, scaleY, 1);
+
+          logoImg.set({
+            left: canvasWidth / 2,
+            top: 50,
+            scaleX: scale,
+            scaleY: scale,
+            originX: "center",
+            selectable: false,
+            evented: false,
+            opacity: 0.9,
+          });
+
+          logoElement = logoImg;
+        } catch {
+          throw new Error("Failed to load external image");
+        }
+      } else {
+        // Local or optimized loading
+        const optimizedImg = await loadOptimizedImage(logoUrl, {
+          maxWidth: 150,
+          maxHeight: 100,
+          quality: 0.9,
+          fallbackUrl: "/default-logo.svg",
+        });
+
+        if (optimizedImg) {
+          const logoImg = new FabricImage(optimizedImg);
+
+          const canvasWidth = canvas.width || 1024;
+          const maxLogoWidth = 120;
+          const maxLogoHeight = 80;
+
+          const scaleX = maxLogoWidth / logoImg.width!;
+          const scaleY = maxLogoHeight / logoImg.height!;
+          const scale = Math.min(scaleX, scaleY, 1);
+
+          logoImg.set({
+            left: canvasWidth / 2,
+            top: 50,
+            scaleX: scale,
+            scaleY: scale,
+            originX: "center",
+            selectable: false,
+            evented: false,
+            opacity: 0.9,
+          });
+
+          logoElement = logoImg;
+        } else {
+          throw new Error("Failed to load logo image");
+        }
+      }
+
+      canvas.add(logoElement);
+      logoElementRef.current = logoElement;
+      console.log("Logo updated successfully");
+    } catch (error) {
+      console.warn("Failed to load logo, using placeholder:", error);
+      // Add text placeholder if logo fails to load
+      const logoPlaceholder = new Text("LOGO", {
+        left: (canvas.width || 1024) / 2,
+        top: 70,
+        fontSize: 16,
+        fontFamily: "Arial, sans-serif",
+        fill: template.textColor,
+        textAlign: "center",
+        originX: "center",
+        selectable: false,
+        opacity: 0.5,
+      });
+      
+      canvas.add(logoPlaceholder);
+      logoElementRef.current = logoPlaceholder;
+    }
+  }, []);
 
   // Function to update text elements without full refresh
   const updateTextElements = useCallback((canvas: Canvas, data: CertificateData, template: CertificateTemplate) => {
@@ -158,7 +290,17 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     await addBorder(canvas, template);
 
     // Add logo
-    await addLogo(canvas, data, template);
+    const logoElement = await addLogo(canvas, data, template);
+    logoElementRef.current = logoElement;
+    
+    // Set initial logo URL
+    if (data.institution.logoUrl && data.institution.logoUrl.trim()) {
+      currentLogoUrlRef.current = data.institution.logoUrl.trim();
+    } else if (template.logoUrl && template.logoUrl.trim()) {
+      currentLogoUrlRef.current = template.logoUrl.trim();
+    } else {
+      currentLogoUrlRef.current = "/default-logo.svg";
+    }
 
     // Add background pattern
     await addBackgroundPattern(canvas, template);
@@ -244,6 +386,8 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
       canvas.dispose();
       fabricCanvasRef.current = null;
       textElementsRef.current = {};
+      logoElementRef.current = null;
+      currentLogoUrlRef.current = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editable, showGrid]); // Only re-initialize if editable or showGrid changes
@@ -253,14 +397,18 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
     
+    // Update logo if URL changed
+    updateLogo(canvas, certificateData, template);
+    
+    // Update text elements
     updateTextElements(canvas, certificateData, template);
-  }, [certificateData, template, updateTextElements]);
+  }, [certificateData, template, updateTextElements, updateLogo]);
 
   const addLogo = async (
     canvas: Canvas,
     data: CertificateData,
     template: CertificateTemplate
-  ) => {
+  ): Promise<FabricImage | Text> => {
     try {
       // Determine logo URL with priority: user > template > default
       let logoUrl = "";
@@ -324,7 +472,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
           canvas.add(logoImg);
           console.log("External logo added successfully to canvas");
-          return;
+          return logoImg;
         } catch {
           console.warn("External logo failed, trying with optimization...");
         }
@@ -364,6 +512,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
         canvas.add(logoImg);
         console.log("Optimized logo added successfully with URL:", logoUrl);
+        return logoImg;
       } else {
         throw new Error("Failed to load logo image");
       }
@@ -382,6 +531,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
         opacity: 0.5,
       });
       canvas.add(logoPlaceholder);
+      return logoPlaceholder;
     }
   };
 
